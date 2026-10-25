@@ -34,6 +34,7 @@ abstract class KhorochDatabase : RoomDatabase() {
     abstract fun merchantMemoryDao(): MerchantMemoryDao
     abstract fun rawMessageDao(): RawMessageDao
     abstract fun suppressedHashDao(): SuppressedHashDao
+    abstract fun tagDao(): TagDao
 
     companion object {
         @Volatile

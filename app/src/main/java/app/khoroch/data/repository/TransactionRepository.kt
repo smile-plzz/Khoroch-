@@ -13,7 +13,9 @@ import app.khoroch.data.local.KhorochDatabase
 import app.khoroch.data.local.MerchantMemoryEntity
 import app.khoroch.data.local.RawMessageEntity
 import app.khoroch.data.local.SuppressedHashEntity
+import app.khoroch.data.local.TagEntity
 import app.khoroch.data.local.TransactionEntity
+import app.khoroch.data.local.TransactionTagCrossRef
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
@@ -32,6 +34,7 @@ class TransactionRepository(
     private val merchantMemoryDao = database.merchantMemoryDao()
     private val rawMessageDao = database.rawMessageDao()
     private val suppressedHashDao = database.suppressedHashDao()
+    private val tagDao = database.tagDao()
 
     private val categorizer: CategorizationEngine by lazy {
         val rulesJson = try {
@@ -179,6 +182,72 @@ class TransactionRepository(
 
     suspend fun restoreTransaction(id: Long) = withContext(Dispatchers.IO) {
         transactionDao.restore(id)
+    }
+
+    suspend fun getRawMessage(id: Long): RawMessageEntity? = withContext(Dispatchers.IO) {
+        rawMessageDao.getById(id)
+    }
+
+    suspend fun splitTransaction(
+        originalId: Long,
+        firstPartPaisa: Long,
+        firstPartCategory: String,
+        secondPartPaisa: Long,
+        secondPartCategory: String
+    ): Boolean = withContext(Dispatchers.IO) {
+        val original = transactionDao.getById(originalId) ?: return@withContext false
+        if (firstPartPaisa + secondPartPaisa != original.amountPaisa) return@withContext false
+
+        // 1. Update original with first part
+        val updatedOriginal = original.copy(
+            amountPaisa = firstPartPaisa,
+            categoryId = firstPartCategory,
+            categorySource = CategorySource.USER.value,
+            updatedAt = System.currentTimeMillis()
+        )
+        transactionDao.update(updatedOriginal)
+
+        // 2. Insert split sibling transaction
+        val splitSibling = original.copy(
+            id = 0,
+            amountPaisa = secondPartPaisa,
+            feePaisa = 0L,
+            categoryId = secondPartCategory,
+            categorySource = CategorySource.USER.value,
+            linkedTxnId = originalId,
+            dedupeHash = HashUtils.sha256("split:$originalId:${System.nanoTime()}"),
+            createdAt = System.currentTimeMillis(),
+            updatedAt = System.currentTimeMillis()
+        )
+        transactionDao.insert(splitSibling)
+        true
+    }
+
+    fun getAllTags(): Flow<List<TagEntity>> = tagDao.getAllTags()
+
+    fun getTagsForTransaction(txnId: Long): Flow<List<TagEntity>> = tagDao.getTagsForTransaction(txnId)
+
+    suspend fun addTag(txnId: Long, rawTag: String) = withContext(Dispatchers.IO) {
+        val cleanTag = rawTag.trim().lowercase().removePrefix("#")
+        if (cleanTag.isBlank()) return@withContext
+
+        var tagId = tagDao.getTagByName(cleanTag)
+        if (tagId == null) {
+            tagId = tagDao.insertTag(TagEntity(name = cleanTag))
+        }
+        if (tagId > 0) {
+            tagDao.linkTag(TransactionTagCrossRef(transactionId = txnId, tagId = tagId))
+        }
+    }
+
+    suspend fun removeTag(txnId: Long, tagId: Long) = withContext(Dispatchers.IO) {
+        tagDao.unlinkTag(txnId, tagId)
+    }
+
+    fun getAllMerchantMemories(): Flow<List<MerchantMemoryEntity>> = merchantMemoryDao.getAll()
+
+    suspend fun deleteMerchantMemory(key: String) = withContext(Dispatchers.IO) {
+        merchantMemoryDao.delete(key)
     }
 
     suspend fun saveUnparsedMessage(sender: String, body: String, receivedAt: Long) = withContext(Dispatchers.IO) {

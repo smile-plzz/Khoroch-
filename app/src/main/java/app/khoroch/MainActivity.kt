@@ -25,6 +25,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -37,6 +38,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.os.LocaleListCompat
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
+import app.khoroch.data.local.TagEntity
 import app.khoroch.data.local.TransactionEntity
 import app.khoroch.data.repository.PreferencesRepository
 import app.khoroch.data.repository.TransactionRepository
@@ -129,11 +131,30 @@ fun KhorochMainContent(
     val budgets by transactionRepo.getAllBudgets().collectAsState(initial = emptyList())
     val unparsedCount by transactionRepo.getUnparsedCount().collectAsState(initial = 0)
     val unparsedMessages by transactionRepo.getUnparsedMessages().collectAsState(initial = emptyList())
+    val merchantMemories by transactionRepo.getAllMerchantMemories().collectAsState(initial = emptyList())
 
     var selectedTabIndex by remember { mutableIntStateOf(0) }
     var selectedTxnForDetail by remember { mutableStateOf<TransactionEntity?>(null) }
     var viewingUnparsedScreen by remember { mutableStateOf(false) }
 
+    var rawSmsText by remember { mutableStateOf<String?>(null) }
+    var tagsForDetail by remember { mutableStateOf<List<TagEntity>>(emptyList()) }
+
+    LaunchedEffect(selectedTxnForDetail) {
+        val txn = selectedTxnForDetail
+        if (txn != null) {
+            val rawId = txn.rawMessageId
+            rawSmsText = if (rawId != null) transactionRepo.getRawMessage(rawId)?.body else null
+            transactionRepo.getTagsForTransaction(txn.id).collect {
+                tagsForDetail = it
+            }
+        } else {
+            rawSmsText = null
+            tagsForDetail = emptyList()
+        }
+    }
+
+    val context = androidx.compose.ui.platform.LocalContext.current
     // SMS Permission Launcher
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
@@ -142,7 +163,7 @@ fun KhorochMainContent(
             permissions[Manifest.permission.RECEIVE_SMS] == true
         if (granted) {
             val importRequest = OneTimeWorkRequestBuilder<HistoryImportWorker>().build()
-            // Queue background history import
+            WorkManager.getInstance(context).enqueue(importRequest)
         }
     }
 
@@ -214,6 +235,7 @@ fun KhorochMainContent(
                     unparsedCount = unparsedCount,
                     useBanglaNumerals = preferences.banglaNumerals,
                     currencySymbol = preferences.currencyDisplay,
+                    hideAmountsOnHome = preferences.hideAmountsOnHome,
                     onSeeAllClick = { selectedTabIndex = 1 },
                     onUnparsedClick = { viewingUnparsedScreen = true },
                     onTransactionClick = { txnId ->
@@ -237,6 +259,12 @@ fun KhorochMainContent(
                     currencySymbol = preferences.currencyDisplay,
                     onTransactionClick = { txnId ->
                         selectedTxnForDetail = transactions.firstOrNull { it.id == txnId }
+                    },
+                    onDeleteTransaction = { txnId ->
+                        scope.launch { transactionRepo.deleteTransaction(txnId) }
+                    },
+                    onRestoreTransaction = { txnId ->
+                        scope.launch { transactionRepo.restoreTransaction(txnId) }
                     }
                 )
                 2 -> BudgetsScreen(
@@ -249,6 +277,7 @@ fun KhorochMainContent(
                 3 -> SettingsScreen(
                     preferences = preferences,
                     unparsedCount = unparsedCount,
+                    merchantMemories = merchantMemories,
                     onLanguageChange = { lang ->
                         scope.launch {
                             preferencesRepo.setLanguage(lang)
@@ -276,7 +305,15 @@ fun KhorochMainContent(
                     onClearAllData = {
                         scope.launch { transactionRepo.clearAllData() }
                     },
-                    onUnparsedClick = { viewingUnparsedScreen = true }
+                    onUnparsedClick = { viewingUnparsedScreen = true },
+                    onDeleteMerchantMemory = { key ->
+                        scope.launch { transactionRepo.deleteMerchantMemory(key) }
+                    },
+                    onRescanSms = {
+                        val importRequest = OneTimeWorkRequestBuilder<HistoryImportWorker>().build()
+                        WorkManager.getInstance(context).enqueue(importRequest)
+                        Toast.makeText(context, "Scanning SMS from last 90 days...", Toast.LENGTH_SHORT).show()
+                    }
                 )
             }
         }
@@ -284,12 +321,26 @@ fun KhorochMainContent(
         selectedTxnForDetail?.let { txn ->
             TransactionDetailDialog(
                 transaction = txn,
+                rawSmsText = rawSmsText,
+                tags = tagsForDetail,
                 useBanglaNumerals = preferences.banglaNumerals,
                 currencySymbol = preferences.currencyDisplay,
                 onDismiss = { selectedTxnForDetail = null },
                 onCategoryChanged = { newCat, applyToAll ->
                     scope.launch {
                         transactionRepo.updateCategory(txn.id, newCat, applyToAll)
+                        selectedTxnForDetail = null
+                    }
+                },
+                onAddTag = { tag ->
+                    scope.launch { transactionRepo.addTag(txn.id, tag) }
+                },
+                onRemoveTag = { tagId ->
+                    scope.launch { transactionRepo.removeTag(txn.id, tagId) }
+                },
+                onSplit = { p1, c1, p2, c2 ->
+                    scope.launch {
+                        transactionRepo.splitTransaction(txn.id, p1, c1, p2, c2)
                         selectedTxnForDetail = null
                     }
                 },

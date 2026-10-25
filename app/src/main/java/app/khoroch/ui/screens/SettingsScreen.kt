@@ -2,6 +2,7 @@ package app.khoroch.ui.screens
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -12,14 +13,18 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.CurrencyExchange
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Sms
 import androidx.compose.material3.AlertDialog
@@ -29,8 +34,11 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -45,6 +53,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import app.khoroch.data.local.MerchantMemoryEntity
 import app.khoroch.data.repository.UserPreferences
 import app.khoroch.ui.theme.LightExpense
 
@@ -52,6 +62,7 @@ import app.khoroch.ui.theme.LightExpense
 fun SettingsScreen(
     preferences: UserPreferences,
     unparsedCount: Int,
+    merchantMemories: List<MerchantMemoryEntity> = emptyList(),
     onLanguageChange: (String) -> Unit,
     onThemeChange: (String) -> Unit,
     onBanglaNumeralsChange: (Boolean) -> Unit,
@@ -59,11 +70,15 @@ fun SettingsScreen(
     onAppLockChange: (Boolean) -> Unit,
     onExportCsv: () -> Unit,
     onClearAllData: () -> Unit,
-    onUnparsedClick: () -> Unit
+    onUnparsedClick: () -> Unit,
+    onRescanSms: () -> Unit = {},
+    onDeleteMerchantMemory: (String) -> Unit = {}
 ) {
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
     var showThemeDialog by remember { mutableStateOf(false) }
     var showLanguageDialog by remember { mutableStateOf(false) }
+    var showMerchantMemoryDialog by remember { mutableStateOf(false) }
+    var showPinSetupDialog by remember { mutableStateOf(false) }
 
     LazyColumn(
         modifier = Modifier
@@ -82,7 +97,7 @@ fun SettingsScreen(
                     SettingsRow(
                         icon = Icons.Default.Sms,
                         title = "Automatic Tracking",
-                        subtitle = "Parse bKash, Nagad, Rocket, Bank SMS",
+                        subtitle = "Captures wallet & bank notifications locally",
                         trailing = {
                             Switch(
                                 checked = preferences.smsTrackingEnabled,
@@ -94,8 +109,37 @@ fun SettingsScreen(
                     SettingsRow(
                         icon = Icons.Default.Shield,
                         title = "Review Unparsed Messages",
-                        subtitle = if (unparsedCount > 0) "$unparsedCount unparsed messages waiting" else "All messages recognized",
+                        subtitle = if (unparsedCount > 0) "$unparsedCount unparsed messages waiting" else "All allowlisted SMS recognized",
                         onClick = onUnparsedClick,
+                        trailing = {
+                            Icon(Icons.Default.ChevronRight, contentDescription = null)
+                        }
+                    )
+                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                    SettingsRow(
+                        icon = Icons.Default.Refresh,
+                        title = "Re-scan SMS Messages",
+                        subtitle = "Scan inbox from the last 90 days",
+                        onClick = onRescanSms
+                    )
+                }
+            }
+        }
+
+        // Section: Money & Memory
+        item {
+            SettingsSectionHeader(title = "Smart Categorization")
+            Card(
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column {
+                    SettingsRow(
+                        icon = Icons.Default.Memory,
+                        title = "Learned Merchants",
+                        subtitle = "${merchantMemories.size} merchants memorized",
+                        onClick = { showMerchantMemoryDialog = true },
                         trailing = {
                             Icon(Icons.Default.ChevronRight, contentDescription = null)
                         }
@@ -130,7 +174,7 @@ fun SettingsScreen(
                     SettingsRow(
                         icon = Icons.Default.Language,
                         title = "Bangla Numerals (০, ১, ২, ...)",
-                        subtitle = "Display amounts in Bangla digits",
+                        subtitle = "Display all numbers in Bangla digits",
                         trailing = {
                             Switch(
                                 checked = preferences.banglaNumerals,
@@ -153,12 +197,18 @@ fun SettingsScreen(
                 Column {
                     SettingsRow(
                         icon = Icons.Default.Lock,
-                        title = "App Lock",
-                        subtitle = "Protect spending with Biometrics or PIN",
+                        title = "App Lock PIN",
+                        subtitle = if (preferences.appLockEnabled) "App lock enabled" else "Set 4-digit PIN",
                         trailing = {
                             Switch(
                                 checked = preferences.appLockEnabled,
-                                onCheckedChange = onAppLockChange
+                                onCheckedChange = { enabled ->
+                                    if (enabled) {
+                                        showPinSetupDialog = true
+                                    } else {
+                                        onAppLockChange(false)
+                                    }
+                                }
                             )
                         }
                     )
@@ -166,7 +216,7 @@ fun SettingsScreen(
                     SettingsRow(
                         icon = Icons.Default.Shield,
                         title = "Hide Amounts on Home",
-                        subtitle = "Tap amount to reveal",
+                        subtitle = "Mask balances as •••••• until tapped",
                         trailing = {
                             Switch(
                                 checked = preferences.hideAmountsOnHome,
@@ -235,7 +285,134 @@ fun SettingsScreen(
         }
     }
 
-    // Dialogs
+    // Learned Merchants Manager Dialog
+    if (showMerchantMemoryDialog) {
+        Dialog(onDismissRequest = { showMerchantMemoryDialog = false }) {
+            Card(
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                modifier = Modifier.fillMaxWidth().height(420.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = "Learned Merchants (${merchantMemories.size})",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    if (merchantMemories.isEmpty()) {
+                        Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                            Text(
+                                text = "No learned merchants yet.\nCategorize a transaction and select 'Always remember' to teach the app.",
+                                fontSize = 13.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                            )
+                        }
+                    } else {
+                        LazyColumn(modifier = Modifier.weight(1f)) {
+                            items(merchantMemories, key = { it.counterpartyKey }) { mem ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 6.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(mem.counterpartyKey, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                                        Text(
+                                            "Category: ${mem.categoryId.replaceFirstChar { it.uppercase() }}",
+                                            fontSize = 12.sp,
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
+                                    }
+                                    IconButton(onClick = { onDeleteMerchantMemory(mem.counterpartyKey) }) {
+                                        Icon(Icons.Default.Delete, contentDescription = "Delete", tint = LightExpense, modifier = Modifier.size(18.dp))
+                                    }
+                                }
+                                HorizontalDivider()
+                            }
+                        }
+                    }
+
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                        TextButton(onClick = { showMerchantMemoryDialog = false }) {
+                            Text("Close")
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // App Lock PIN Setup Dialog
+    if (showPinSetupDialog) {
+        var enteredPin by remember { mutableStateOf("") }
+        var confirmPin by remember { mutableStateOf("") }
+        var errorMsg by remember { mutableStateOf<String?>(null) }
+
+        Dialog(onDismissRequest = { showPinSetupDialog = false }) {
+            Card(
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                modifier = Modifier.padding(16.dp)
+            ) {
+                Column(modifier = Modifier.padding(20.dp)) {
+                    Text("Set App Lock PIN", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    OutlinedTextField(
+                        value = enteredPin,
+                        onValueChange = { if (it.length <= 6 && it.all { c -> c.isDigit() }) enteredPin = it },
+                        label = { Text("4 to 6 Digit PIN") },
+                        singleLine = true,
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    OutlinedTextField(
+                        value = confirmPin,
+                        onValueChange = { if (it.length <= 6 && it.all { c -> c.isDigit() }) confirmPin = it },
+                        label = { Text("Confirm PIN") },
+                        singleLine = true,
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    if (errorMsg != null) {
+                        Text(errorMsg!!, color = LightExpense, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp))
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                        TextButton(onClick = { showPinSetupDialog = false }) { Text("Cancel") }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Button(
+                            onClick = {
+                                if (enteredPin.length < 4) {
+                                    errorMsg = "PIN must be at least 4 digits"
+                                } else if (enteredPin != confirmPin) {
+                                    errorMsg = "PINs do not match"
+                                } else {
+                                    onAppLockChange(true)
+                                    showPinSetupDialog = false
+                                }
+                            }
+                        ) {
+                            Text("Save PIN")
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Other Dialogs
     if (showDeleteConfirmDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteConfirmDialog = false },

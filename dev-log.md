@@ -39,3 +39,15 @@
 - **Verification**:
   - `.\gradlew.bat testDebugUnitTest`: **33/33 tests PASSED**.
   - `.\gradlew.bat assembleDebug`: **BUILD SUCCESSFUL** -> `app-debug.apk` built.
+
+### [2026-10-25 16:43:00 +06:00] - PM UX Refinement, Feature Build & Shipped
+- **PM Feature Scope Implemented**:
+  - **Persona Nuances & Privacy**: Implemented interactive "Hide amounts on Home" masking balances as `••••••` with 1-tap reveal; built daily safe-to-spend calculation explainer dialog.
+  - **Reconciliation & Trust**: Added expandable Original SMS card in Transaction Detail with 1-click clipboard copy.
+  - **Freelancer Spending**: Implemented Transaction Split dialog (splitting 1 expense into 2 categories that sum exactly to the total) and Tag support (`#tags`).
+  - **Activity Screen Upgrades**: Added Category and Tag carousel filters, swipe-to-delete with a 5-second Undo snackbar.
+  - **Settings Upgrades**: Added "Learned Merchants" memory viewer/manager dialog, 4-digit App Lock PIN setup modal, and Re-scan SMS action.
+- **Verification**:
+  - `.\gradlew.bat testDebugUnitTest`: **ALL TESTS PASSED** (36+ tests).
+  - `.\gradlew.bat assembleDebug`: **BUILD SUCCESSFUL** -> `app-debug.apk` (18.8 MB).
+- **Git & Remote**: Staged, committed, and pushed to `origin/main` (`git@github.com:smile-plzz/Khoroch-.git`).

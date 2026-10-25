@@ -114,6 +114,9 @@ interface RawMessageDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insert(entity: RawMessageEntity): Long
 
+    @Query("SELECT * FROM raw_message WHERE id = :id")
+    suspend fun getById(id: Long): RawMessageEntity?
+
     @Query("SELECT * FROM raw_message WHERE status = 'UNPARSED' ORDER BY receivedAt DESC")
     fun getUnparsedMessages(): Flow<List<RawMessageEntity>>
 
@@ -125,6 +128,27 @@ interface RawMessageDao {
 
     @Query("DELETE FROM raw_message")
     suspend fun clear()
+}
+
+@Dao
+interface TagDao {
+    @Query("SELECT * FROM tag ORDER BY name ASC")
+    fun getAllTags(): Flow<List<TagEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertTag(tag: TagEntity): Long
+
+    @Query("SELECT id FROM tag WHERE name = :name")
+    suspend fun getTagByName(name: String): Long?
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun linkTag(crossRef: TransactionTagCrossRef)
+
+    @Query("DELETE FROM transaction_tag WHERE transactionId = :txnId AND tagId = :tagId")
+    suspend fun unlinkTag(txnId: Long, tagId: Long)
+
+    @Query("SELECT t.* FROM tag t INNER JOIN transaction_tag ct ON t.id = ct.tagId WHERE ct.transactionId = :txnId")
+    fun getTagsForTransaction(txnId: Long): Flow<List<TagEntity>>
 }
 
 @Dao

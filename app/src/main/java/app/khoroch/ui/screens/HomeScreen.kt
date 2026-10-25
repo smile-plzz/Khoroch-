@@ -21,6 +21,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Info
@@ -71,6 +73,7 @@ fun HomeScreen(
     unparsedCount: Int,
     useBanglaNumerals: Boolean = false,
     currencySymbol: String = "Tk",
+    hideAmountsOnHome: Boolean = false,
     onSeeAllClick: () -> Unit = {},
     onUnparsedClick: () -> Unit = {},
     onTransactionClick: (Long) -> Unit = {},
@@ -78,6 +81,8 @@ fun HomeScreen(
 ) {
     var showAddSheet by remember { mutableStateOf(false) }
     var calendarMonthOffset by remember { mutableStateOf(0) } // 0 is current month
+    var amountsRevealed by remember { mutableStateOf(!hideAmountsOnHome) }
+    var showSafeToSpendDialog by remember { mutableStateOf(false) }
 
     val calendar = remember(calendarMonthOffset) {
         Calendar.getInstance().apply {
@@ -194,21 +199,43 @@ fun HomeScreen(
                         .padding(horizontal = 16.dp, vertical = 8.dp)
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
-                        Text(
-                            text = "Spent this month",
-                            fontSize = 14.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Spent this month",
+                                fontSize = 14.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            if (hideAmountsOnHome) {
+                                IconButton(
+                                    onClick = { amountsRevealed = !amountsRevealed },
+                                    modifier = Modifier.size(24.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = if (amountsRevealed) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                        contentDescription = "Toggle amount visibility",
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            }
+                        }
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = MoneyFormatter.formatPaisa(
-                                paisa = totalExpensePaisa,
-                                useBanglaNumerals = useBanglaNumerals,
-                                currencySymbol = currencySymbol
-                            ),
+                            text = if (amountsRevealed) {
+                                MoneyFormatter.formatPaisa(
+                                    paisa = totalExpensePaisa,
+                                    useBanglaNumerals = useBanglaNumerals,
+                                    currencySymbol = currencySymbol
+                                )
+                            } else "••••••",
                             fontSize = 32.sp,
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.clickable { amountsRevealed = !amountsRevealed }
                         )
 
                         Spacer(modifier = Modifier.height(8.dp))
@@ -217,13 +244,17 @@ fun HomeScreen(
                         val netPaisa = totalIncomePaisa - totalExpensePaisa
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                             Text(
-                                text = "Income: ${MoneyFormatter.formatPaisa(totalIncomePaisa, useBanglaNumerals, currencySymbol = currencySymbol)}",
+                                text = if (amountsRevealed) {
+                                    "Income: ${MoneyFormatter.formatPaisa(totalIncomePaisa, useBanglaNumerals, currencySymbol = currencySymbol)}"
+                                } else "Income: ••••••",
                                 fontSize = 13.sp,
                                 color = LightIncome,
                                 fontWeight = FontWeight.Medium
                             )
                             Text(
-                                text = "Net: ${if (netPaisa >= 0) "+" else ""}${MoneyFormatter.formatPaisa(netPaisa, useBanglaNumerals, currencySymbol = currencySymbol)}",
+                                text = if (amountsRevealed) {
+                                    "Net: ${if (netPaisa >= 0) "+" else ""}${MoneyFormatter.formatPaisa(netPaisa, useBanglaNumerals, currencySymbol = currencySymbol)}"
+                                } else "Net: ••••••",
                                 fontSize = 13.sp,
                                 color = if (netPaisa >= 0) LightIncome else LightExpense,
                                 fontWeight = FontWeight.SemiBold
@@ -238,15 +269,20 @@ fun HomeScreen(
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Text(
-                                text = "$budgetPercent% of ${MoneyFormatter.formatPaisa(monthlyBudgetPaisa, useBanglaNumerals, currencySymbol = currencySymbol)}",
+                                text = if (amountsRevealed) {
+                                    "$budgetPercent% of ${MoneyFormatter.formatPaisa(monthlyBudgetPaisa, useBanglaNumerals, currencySymbol = currencySymbol)}"
+                                } else "$budgetPercent% of ••••••",
                                 fontSize = 12.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Text(
-                                text = "Safe to spend today: ${MoneyFormatter.formatPaisa(safeToSpendTodayPaisa, useBanglaNumerals, currencySymbol = currencySymbol)}",
+                                text = if (amountsRevealed) {
+                                    "Safe to spend: ${MoneyFormatter.formatPaisa(safeToSpendTodayPaisa, useBanglaNumerals, currencySymbol = currencySymbol)}"
+                                } else "Safe to spend: ••••••",
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.primary
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.clickable { showSafeToSpendDialog = true }
                             )
                         }
                         Spacer(modifier = Modifier.height(6.dp))
@@ -414,6 +450,23 @@ fun HomeScreen(
                 onSave = onAddTransaction,
                 useBanglaNumerals = useBanglaNumerals,
                 currencySymbol = currencySymbol
+            )
+        }
+
+        if (showSafeToSpendDialog) {
+            androidx.compose.material3.AlertDialog(
+                onDismissRequest = { showSafeToSpendDialog = false },
+                title = { Text("Safe to Spend Today") },
+                text = {
+                    Text(
+                        text = "Calculated as your remaining monthly budget (${MoneyFormatter.formatPaisa(remainingBudgetPaisa, useBanglaNumerals, currencySymbol = currencySymbol)}) divided by $daysRemaining days left in this month.\n\nKeeping your spending at or below this number ensures you won't exceed your budget before month end!"
+                    )
+                },
+                confirmButton = {
+                    androidx.compose.material3.TextButton(onClick = { showSafeToSpendDialog = false }) {
+                        Text("Got it")
+                    }
+                }
             )
         }
     }
