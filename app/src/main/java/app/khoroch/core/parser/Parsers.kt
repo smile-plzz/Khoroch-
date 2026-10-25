@@ -352,9 +352,24 @@ class BankParser : ProviderParser {
         val body = normalizedBody
         val s = sender.trim()
 
-        // 1. Card Swipe / POS Purchase:
+        // 1. ATM Withdrawal (checked before general merchant debit)
+        val atmRegex = "(?i)(?:debited for|withdrawn).*?Tk\\s?([\\d,]+(?:\\.\\d{1,2})?)\\s+at\\s+(?:ATM|cash)".toRegex()
+        atmRegex.find(body)?.let { match ->
+            return ParsedTxn(
+                amountPaisa = MoneyFormatter.parseTakaToPaisa(match.groupValues[1]),
+                direction = Direction.TRANSFER,
+                provider = s,
+                counterparty = "ATM Cash Withdrawal",
+                referenceId = extractTrxId(body),
+                timestamp = extractTimestamp(body) ?: receivedAt,
+                confidence = 0.9f
+            )
+        }
+
+        // 2. Card Swipe / POS Purchase:
         // "Your Card ending with 1234 has been debited for Tk 1,500.00 at MEENA BAZAR on 25-OCT-26. Avail Bal: Tk 45,000"
-        val cardDebitedRegex = "(?i)(?:Card|Acct|A/C).*?(?:debited for|spent|purchase of)\\s+Tk\\s?([\\d,]+(?:\\.\\d{1,2})?)\\s+at\\s+([^.]+?)\\s+(?:on|avail|balance|ref|txnid|$)".toRegex()
+        // "Purchase of BDT 1,200.00 on card ending 8899 at PIZZA HUT on 25-OCT-26"
+        val cardDebitedRegex = "(?i)(?:(?:Card|Acct|A/C).*?(?:debited for|spent|purchase of)|Purchase of)\\s+Tk\\s?([\\d,]+(?:\\.\\d{1,2})?)(?:.*?on card.*?)?\\s+at\\s+([^.]+?)\\s+(?:on|avail|balance|ref|txnid|$)".toRegex()
         cardDebitedRegex.find(body)?.let { match ->
             val amount = MoneyFormatter.parseTakaToPaisa(match.groupValues[1])
             var counterparty = match.groupValues[2].trim()
@@ -371,7 +386,7 @@ class BankParser : ProviderParser {
             )
         }
 
-        // 2. Account Credited / Salary:
+        // 3. Account Credited / Salary:
         // "Your A/C ... has been credited by Tk 50,000.00 from SALARY"
         val creditedRegex = "(?i)(?:Card|Acct|A/C).*?credited\\s+(?:by|for|with)\\s+Tk\\s?([\\d,]+(?:\\.\\d{1,2})?)(?:.*?from\\s+([^.]+))?".toRegex()
         creditedRegex.find(body)?.let { match ->
@@ -381,24 +396,10 @@ class BankParser : ProviderParser {
                 amountPaisa = amount,
                 direction = Direction.INCOME,
                 provider = s,
-                counterparty = counterparty,
+                counterparty = cleanMerchantName(counterparty),
                 referenceId = extractTrxId(body),
                 timestamp = extractTimestamp(body) ?: receivedAt,
                 confidence = 0.95f
-            )
-        }
-
-        // 3. ATM Withdrawal:
-        val atmRegex = "(?i)(?:debited for|withdrawn).*?Tk\\s?([\\d,]+(?:\\.\\d{1,2})?)\\s+at\\s+(?:ATM|cash)".toRegex()
-        atmRegex.find(body)?.let { match ->
-            return ParsedTxn(
-                amountPaisa = MoneyFormatter.parseTakaToPaisa(match.groupValues[1]),
-                direction = Direction.TRANSFER,
-                provider = s,
-                counterparty = "ATM Cash Withdrawal",
-                referenceId = extractTrxId(body),
-                timestamp = extractTimestamp(body) ?: receivedAt,
-                confidence = 0.9f
             )
         }
 

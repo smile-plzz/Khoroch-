@@ -1,6 +1,9 @@
 package app.khoroch.ui.components
 
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -13,11 +16,16 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -36,12 +44,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import app.khoroch.core.categorizer.SmartSuggestionEngine
 import app.khoroch.core.common.MoneyFormatter
 import app.khoroch.core.model.Direction
+import app.khoroch.ui.theme.CategoryColors
 import app.khoroch.ui.theme.LightExpense
 import app.khoroch.ui.theme.LightIncome
 
@@ -59,7 +70,18 @@ fun AddTransactionSheet(
     var selectedCategoryId by remember { mutableStateOf("food") }
     var noteText by remember { mutableStateOf("") }
 
-    val categories = listOf(
+    val currentDirection = when (selectedDirectionIndex) {
+        1 -> Direction.INCOME
+        2 -> Direction.TRANSFER
+        else -> Direction.EXPENSE
+    }
+
+    // Dynamic, user-tailored suggestions based on time of day and money direction
+    val smartSuggestions = remember(currentDirection) {
+        SmartSuggestionEngine.getSuggestions(direction = currentDirection)
+    }
+
+    val allCategories = listOf(
         Pair("food", "Food"),
         Pair("groceries", "Groceries"),
         Pair("transport", "Transport"),
@@ -69,6 +91,8 @@ fun AddTransactionSheet(
         Pair("rent", "Rent"),
         Pair("entertainment", "Entertainment"),
         Pair("family", "Family"),
+        Pair("transfer", "Transfer"),
+        Pair("income", "Income"),
         Pair("other", "Other")
     )
 
@@ -84,13 +108,22 @@ fun AddTransactionSheet(
                 .padding(horizontal = 20.dp, vertical = 8.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Segmented Control (Expense / Income / Transfer)
+            // Modern Segmented Control
             SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
                 val options = listOf("Expense", "Income", "Transfer")
                 options.forEachIndexed { index, label ->
                     SegmentedButton(
                         shape = SegmentedButtonDefaults.itemShape(index = index, count = options.size),
-                        onClick = { selectedDirectionIndex = index },
+                        onClick = {
+                            selectedDirectionIndex = index
+                            val newDir = when (index) {
+                                1 -> Direction.INCOME
+                                2 -> Direction.TRANSFER
+                                else -> Direction.EXPENSE
+                            }
+                            if (newDir == Direction.INCOME) selectedCategoryId = "income"
+                            else if (newDir == Direction.TRANSFER) selectedCategoryId = "transfer"
+                        },
                         selected = index == selectedDirectionIndex
                     ) {
                         Text(label, fontWeight = FontWeight.Medium)
@@ -98,7 +131,7 @@ fun AddTransactionSheet(
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(14.dp))
 
             // Large Formatted Amount Display
             val amountPaisa = MoneyFormatter.parseTakaToPaisa(amountString)
@@ -111,7 +144,7 @@ fun AddTransactionSheet(
 
             Text(
                 text = formattedDisplay,
-                fontSize = 36.sp,
+                fontSize = 38.sp,
                 fontWeight = FontWeight.Bold,
                 color = when (selectedDirectionIndex) {
                     0 -> LightExpense
@@ -122,23 +155,95 @@ fun AddTransactionSheet(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Category Chips Row (Horizontal Scroll)
+            // User-Tailored Interactive Suggestion Header
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.AutoAwesome,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = "Tailored Suggestions",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+
+            // Interactive Smart Suggestions Row
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                categories.forEach { (catId, catName) ->
+                smartSuggestions.forEach { suggestion ->
+                    val isSelected = suggestion.categoryId == selectedCategoryId
+                    val catColor = CategoryColors[suggestion.categoryId] ?: MaterialTheme.colorScheme.primary
+
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                        border = if (isSelected) androidx.compose.foundation.BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary) else null,
+                        modifier = Modifier
+                            .clickable { selectedCategoryId = suggestion.categoryId }
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                        ) {
+                            Icon(
+                                imageVector = getCategoryIcon(suggestion.categoryId),
+                                contentDescription = null,
+                                tint = if (isSelected) MaterialTheme.colorScheme.primary else catColor,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Column {
+                                Text(
+                                    text = suggestion.categoryName,
+                                    fontSize = 13.sp,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = suggestion.reason,
+                                    fontSize = 10.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Secondary All Categories Row
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                allCategories.forEach { (catId, catName) ->
+                    val selected = catId == selectedCategoryId
                     FilterChip(
-                        selected = catId == selectedCategoryId,
+                        selected = selected,
                         onClick = { selectedCategoryId = catId },
-                        label = { Text(catName) },
+                        label = { Text(catName, fontSize = 12.sp) },
                         leadingIcon = {
                             Icon(
                                 imageVector = getCategoryIcon(catId),
                                 contentDescription = null,
-                                modifier = Modifier.size(18.dp)
+                                modifier = Modifier.size(16.dp)
                             )
                         }
                     )
@@ -147,17 +252,17 @@ fun AddTransactionSheet(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Note Text Field
+            // Minimal Note Field
             OutlinedTextField(
                 value = noteText,
                 onValueChange = { noteText = it },
-                label = { Text("Note / Description") },
+                placeholder = { Text("Add note (optional)") },
                 singleLine = true,
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(14.dp),
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
             // Numerical Keypad
             AmountKeypad(
@@ -183,19 +288,13 @@ fun AddTransactionSheet(
                 }
             )
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
             // Save Button
-            val direction = when (selectedDirectionIndex) {
-                1 -> Direction.INCOME
-                2 -> Direction.TRANSFER
-                else -> Direction.EXPENSE
-            }
-
             Button(
                 onClick = {
                     if (amountPaisa > 0) {
-                        onSave(amountPaisa, direction, selectedCategoryId, noteText.ifBlank { null })
+                        onSave(amountPaisa, currentDirection, selectedCategoryId, noteText.ifBlank { null })
                         onDismiss()
                     }
                 },
@@ -211,7 +310,7 @@ fun AddTransactionSheet(
                 Text("Save", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(20.dp))
         }
     }
 }
