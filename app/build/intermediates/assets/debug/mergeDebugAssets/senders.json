@@ -1,0 +1,59 @@
+{
+  "version": 1,
+  "senders": [
+    {
+      "id": "bkash",
+      "name": "bKash",
+      "type": "WALLET",
+      "senderIds": ["bKash", "BKASH", "bkash"]
+    },
+    {
+      "id": "nagad",
+      "name": "Nagad",
+      "type": "WALLET",
+      "senderIds": ["NAGAD", "Nagad", "nagad", "16167"]
+    },
+    {
+      "id": "rocket",
+      "name": "Rocket",
+      "type": "WALLET",
+      "senderIds": ["ROCKET", "Rocket", "rocket", "16216"]
+    },
+    {
+      "id": "upay",
+      "name": "Upay",
+      "type": "WALLET",
+      "senderIds": ["Upay", "UPAY", "upay"]
+    },
+    {
+      "id": "citybank",
+      "name": "City Bank",
+      "type": "BANK",
+      "senderIds": ["CityBank", "CITYBANK", "City Bank", "CITY GEM"]
+    },
+    {
+      "id": "bracbank",
+      "name": "BRAC Bank",
+      "type": "BANK",
+      "senderIds": ["BRACBANK", "BracBank", "BRAC BANK"]
+    },
+    {
+      "id": "ebl",
+      "name": "Eastern Bank (EBL)",
+      "type": "BANK",
+      "senderIds": ["EBL", "EasternBank"]
+    },
+    {
+      "id": "dbbl",
+      "name": "Dutch-Bangla Bank (DBBL)",
+      "type": "BANK",
+      "senderIds": ["DBBL", "NexusPay", "DBBLCard"]
+    },
+    {
+      "id": "scb",
+      "name": "Standard Chartered Bank",
+      "type": "BANK",
+      "senderIds": ["SCB", "StanChart", "SCBL"]
+    }
+  ]
+}

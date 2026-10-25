@@ -1,0 +1,109 @@
+{
+  "version": 1,
+  "rules": [
+    {
+      "id": "food-001",
+      "category": "food",
+      "field": "counterparty",
+      "match": "contains_any",
+      "values": ["foodpanda", "pathao food", "kfc", "pizza hut", "burger king", "chillox", "takeout", "madchef", "herfy", "sultans dine", "kacchi bhai", "cafe", "restaurant", "bakery", "sweet", "mithai"],
+      "priority": 50
+    },
+    {
+      "id": "food-002",
+      "category": "food",
+      "field": "body",
+      "match": "contains_any",
+      "values": ["foodpanda", "pathao food", "restaurant"],
+      "priority": 40
+    },
+    {
+      "id": "groceries-001",
+      "category": "groceries",
+      "field": "counterparty",
+      "match": "contains_any",
+      "values": ["shwapno", "agora", "meena bazar", "chaldal", "unimart", "daily shopping", "grocery", "bazar", "super shop", "mudi"],
+      "priority": 50
+    },
+    {
+      "id": "transport-001",
+      "category": "transport",
+      "field": "counterparty",
+      "match": "contains_any",
+      "values": ["uber", "pathao", "obhai", "shohoz", "cng", "fuel", "petrol", "octane", "cng station", "metro rail", "rapid pass", "railway", "shohoz bus", "green line", "hanif"],
+      "priority": 50
+    },
+    {
+      "id": "bills-001",
+      "category": "bills",
+      "field": "body",
+      "match": "regex",
+      "values": ["(?i)recharge|top ?up|mobile recharge|রিচার্জ"],
+      "priority": 70
+    },
+    {
+      "id": "bills-002",
+      "category": "bills",
+      "field": "counterparty",
+      "match": "contains_any",
+      "values": ["desco", "dpdc", "breb", "reb", "nesco", "wasa", "titas", "bakhrabad", "jalalabad", "carnival", "amberit", "link3", "dot internet", "internet", "broadband", "electricity", "gas bill", "water bill"],
+      "priority": 60
+    },
+    {
+      "id": "shopping-001",
+      "category": "shopping",
+      "field": "counterparty",
+      "match": "contains_any",
+      "values": ["daraz", "bata", "apex", "aarong", "sailor", "richman", "lotto", "yellow", "catseye", "artisan", "gentle park", "cloth", "fashion", "shopping", "mall"],
+      "priority": 50
+    },
+    {
+      "id": "health-001",
+      "category": "health",
+      "field": "counterparty",
+      "match": "contains_any",
+      "values": ["pharmacy", "pharma", "hospital", "clinic", "diagnostic", "popular", "labaid", "ibn sina", "square hospital", "evercare", "united hospital", "medicine", "doctor", "osud"],
+      "priority": 55
+    },
+    {
+      "id": "education-001",
+      "category": "education",
+      "field": "counterparty",
+      "match": "contains_any",
+      "values": ["school", "college", "university", "coaching", "udvash", "unmesh", "mentors", "10 minute school", "tuition", "exam fee", "admission"],
+      "priority": 50
+    },
+    {
+      "id": "entertainment-001",
+      "category": "entertainment",
+      "field": "counterparty",
+      "match": "contains_any",
+      "values": ["star cineplex", "blockbuster", "cineplex", "cinema", "netflix", "spotify", "hoichoi", "chorki", "toffee", "steam", "playstation"],
+      "priority": 50
+    },
+    {
+      "id": "rent-001",
+      "category": "rent",
+      "field": "counterparty",
+      "match": "contains_any",
+      "values": ["landlord", "house rent", "flat rent", "basha bhara", "rent"],
+      "priority": 50
+    },
+    {
+      "id": "transfer-001",
+      "category": "transfer",
+      "field": "body",
+      "match": "contains_any",
+      "values": ["cash out", "ক্যাশ আউট", "add money", "transfer to bank", "bank to bKash", "card to bKash", "linked account"],
+      "priority": 65
+    },
+    {
+      "id": "income-001",
+      "category": "income",
+      "field": "body",
+      "match": "contains_any",
+      "values": ["salary", "remittance", "cash in", "ক্যাশ ইন", "received money", "credited"],
+      "priority": 60
+    }
+  ]
+}

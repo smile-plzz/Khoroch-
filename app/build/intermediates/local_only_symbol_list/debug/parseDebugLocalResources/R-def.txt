@@ -1,0 +1,29 @@
+R_DEF: Internal format may change without notice
+local
+color background_dark
+color background_light
+color primary
+color primary_dark
+drawable ic_launcher_background
+drawable ic_launcher_foreground
+mipmap ic_launcher
+mipmap ic_launcher_round
+string add_expense
+string app_name
+string apply_all
+string budget_80
+string empty_home
+string home_income
+string home_net
+string home_safe_today
+string home_spent
+string nav_activity
+string nav_budgets
+string nav_home
+string nav_settings
+string permission_why
+string save
+string undo
+string unparsed_banner
+style Theme.Khoroch
+xml data_extraction_rules

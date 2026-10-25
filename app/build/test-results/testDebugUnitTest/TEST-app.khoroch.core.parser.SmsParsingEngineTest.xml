@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="app.khoroch.core.parser.SmsParsingEngineTest" tests="8" skipped="0" failures="0" errors="0" timestamp="2026-10-25T08:22:56" hostname="ISMAIL" time="0.073">
+  <properties/>
+  <testcase name="testRocketBillPay" classname="app.khoroch.core.parser.SmsParsingEngineTest" time="0.056"/>
+  <testcase name="testUnallowlistedSenderIsIgnored" classname="app.khoroch.core.parser.SmsParsingEngineTest" time="0.001"/>
+  <testcase name="testOtpMessageIsIgnored" classname="app.khoroch.core.parser.SmsParsingEngineTest" time="0.001"/>
+  <testcase name="testBkashPayment" classname="app.khoroch.core.parser.SmsParsingEngineTest" time="0.007"/>
+  <testcase name="testBankCardSwipe" classname="app.khoroch.core.parser.SmsParsingEngineTest" time="0.003"/>
+  <testcase name="testNagadPayment" classname="app.khoroch.core.parser.SmsParsingEngineTest" time="0.001"/>
+  <testcase name="testBkashCashOut" classname="app.khoroch.core.parser.SmsParsingEngineTest" time="0.001"/>
+  <testcase name="testBkashSendMoney" classname="app.khoroch.core.parser.SmsParsingEngineTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>
