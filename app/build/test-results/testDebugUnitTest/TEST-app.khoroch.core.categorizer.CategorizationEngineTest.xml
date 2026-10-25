@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="app.khoroch.core.categorizer.CategorizationEngineTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-10-25T08:22:57" hostname="ISMAIL" time="0.031">
-  <properties/>
-  <testcase name="testMerchantMemoryTakesPrecedence" classname="app.khoroch.core.categorizer.CategorizationEngineTest" time="0.027"/>
-  <testcase name="testDirectionDefaults" classname="app.khoroch.core.categorizer.CategorizationEngineTest" time="0.003"/>
-  <testcase name="testRuleMatching" classname="app.khoroch.core.categorizer.CategorizationEngineTest" time="0.0"/>
-  <system-out><![CDATA[]]></system-out>
-  <system-err><![CDATA[]]></system-err>
-</testsuite>
